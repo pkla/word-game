@@ -1,6 +1,6 @@
 # Wordle Solver
 
-This repository contains a poorly written and hastily conceived Wordle solver written in Rust.
+This repository contains Wordle solver written in Rust and originally transliterated from Python. It happens to be fast enough to be useful.
 
 The solver is designed to guess the correct word in a maximum of five tries using an optimization algorithm to maximize the expected reduction in possible words after each guess. It evolves the potential set of letters for each position in the word based on previous guesses and the feedback provided for those guesses.
 
@@ -58,3 +58,15 @@ $$
 
 Where $g^*$ is the best guess, which is the one that is expected to minimize the expected number of words remaining in $G$.
 
+### Iterative Process
+
+The above process is repeated iteratively as follows:
+
+1. Begin with the full set of words $W$ and initial constraints $L$ where each $L_i$ contains all possible letters.
+2. Calculate $G$ and $N$ based on the current $L$.
+3. Make a guess $g$ and compute the evolved constraints $L'$ using the $\text{evolve}$ operator.
+4. Update $L$ to $L'$.
+5. Recalculate $G$ and $N$ based on the new $L$.
+6. Repeat steps 3-5 until $|G| = 1$, indicating that only one possible word remains, which is the solution.
+
+In each iteration, the guess $g$ is selected to maximize the expected reduction in the number of possible words, $N - E(g)$.
