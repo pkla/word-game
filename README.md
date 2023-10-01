@@ -29,7 +29,7 @@ Solution: probe
 Define:
 
 - $W$ as the set of all possible words.
-- $L$ as a list of sets, each element $L_i$ representing the possible letters at the $i\$-th position in the word.
+- $L$ as a list of sets, each element $L_i$ representing the possible letters at the $i$-th position in the word.
 - $G$ as the subset of words in $W$ satisfying the constraints in $L$, i.e., $G = \\{ w \in W : \forall i, w_i \in L_i \\}$, where $w_i$ is the $i$-th letter of the word $w$.
 - $N$ as the cardinality of $G$, $N = |G|$.
 - $g$ as a potential guess.
