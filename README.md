@@ -1,6 +1,8 @@
 # Wordle Solver
 
-This repository contains a Wordle solver written in Rust. The solver is designed to guess the correct word in a maximum of five tries using an optimization algorithm to maximize the expected reduction in possible words after each guess. It evolves the potential set of letters for each position in the word based on previous guesses and the feedback provided for those guesses.
+This repository contains a poorly written and hastily conceived Wordle solver written in Rust.
+
+The solver is designed to guess the correct word in a maximum of five tries using an optimization algorithm to maximize the expected reduction in possible words after each guess. It evolves the potential set of letters for each position in the word based on previous guesses and the feedback provided for those guesses.
 
 ## How to Use
 
@@ -13,7 +15,13 @@ cargo run <word> <guess_1> <guess_2> ...
 ### Example:
 
 ```bash
-cargo run probe crane
+> cargo run probe crane
+Guess: crane (80 words remaining)
+Guess: guido (27 words remaining) - auto
+Guess: pooks (4 words remaining) - auto
+Guess: belve (2 words remaining) - auto
+Guess: abers (1 words remaining) - auto
+Solution: probe
 ```
 
 ## Problem Formulation
