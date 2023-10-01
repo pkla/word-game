@@ -50,13 +50,11 @@ $$
 
 Where $|R_g(w)|$ is the cardinality of the set $R_g(w)$.
 
-The objective is to find the guess $g$ that maximizes the expected reduction in the number of possible words:
+The objective is to find the guess $g^*$ that maximizes the expected reduction in the number of possible words:
 
 $$
 g^* = \arg \max_{g \in W} (N - E(g))
 $$
-
-Where $g^*$ is the best guess, which is the one that is expected to minimize the expected number of words remaining in $G$.
 
 ### Iterative Process
 
