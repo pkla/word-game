@@ -30,7 +30,7 @@ Define:
 
 - $W$ as the set of all possible words.
 - $L$ as a list of sets, each element $L_i$ representing the possible letters at the $i\$-th position in the word.
-- $G$ as the subset of words in $W$ satisfying the constraints in $L$, i.e., $G = \{ w \in W : \forall i, w_i \in L_i \}$, where $w_i$ is the $i$-th letter of the word $w$.
+- $G$ as the subset of words in $W$ satisfying the constraints in $L$, i.e., $G = \\{ w \in W : \forall i, w_i \in L_i \\}$, where $w_i$ is the $i$-th letter of the word $w$.
 - $N$ as the cardinality of $G$, $N = |G|$.
 - $g$ as a potential guess.
 
@@ -39,7 +39,7 @@ Now define the evolution operator, $\text{evolve}(L, w, g)$, as the new constrai
 Let $R_g(w)$ be the resulting set of words after evolving the constraints by guessing $g$ and assuming $w$ is the correct word:
 
 $$
-R_g(w) = \{ v \in W : \forall i, v_i \in \text{evolve}(L, w, g)_i \}
+R_g(w) = \\{ v \in W : \forall i, v_i \in \text{evolve}(L, w, g)_i \\}
 $$
 
 The expected number of words remaining in $G$ after making a guess $g$ is:
