@@ -1,143 +1,169 @@
-use std::collections::HashSet;
-use std::fs;
+use tqdm::tqdm;
 use std::env;
-use indicatif::{ProgressBar, ProgressStyle};
-use rayon::prelude::*;
+use std::fs;
 
-const MAX_TRIES: usize = 5;
+const MAX_TRIES: usize = 6;
 
 type Word = [u8; 5];
 
-fn char_to_u8(c: char) -> u8 {
-    (c as u8) - ('a' as u8)
-}
 
-fn u8_to_char(byte: u8) -> char {
-    (byte + ('a' as u8)) as char
-}
-
-fn string_to_word(s: &str) -> Word {
-    let mut word = [0; 5];
-    for (i, c) in s.chars().enumerate() {
-        word[i] = char_to_u8(c);
+fn string_to_u8(word: &str) -> Word {
+    let mut arr = [0u8; 5];
+    for (i, c) in word.chars().enumerate() {
+        arr[i] = (c as u8) - ('a' as u8);
     }
-    word
+    arr
 }
 
-fn get_words() -> Vec<Word> {
+fn u8_to_string(word: &Word) -> String {
+    word.iter().map(|&b| (b + ('a' as u8)) as char).collect()
+}
+
+
+fn get_words() -> Vec<String> {
     let filename = "wordle_words.txt";
     let text = fs::read_to_string(filename).expect("Unable to read the file");
-    let words: HashSet<Word> = text
-        .to_lowercase()
-        .lines()
-        .map(|line| string_to_word(line.trim()))
-        .collect();
-    let mut words: Vec<Word> = words.into_iter().collect();
+    let mut words: Vec<String> = text.lines().map(|s| s.trim().to_lowercase()).collect();
     words.sort();
     words
 }
 
-fn evolve(letter_sets: Vec<HashSet<u8>>, word: &Word, guess: &Word) -> Vec<HashSet<u8>> {
-    let mut new_letter_sets = letter_sets.clone();
 
-    for i in 0..MAX_TRIES {
+fn evolve(l: &[[bool; 5]; 26], word: &Word, guess: &Word) -> [[bool; 5]; 26] {
+    let mut new_l = *l;
+
+    for i in 0..5 {
         if guess[i] == word[i] {
-            new_letter_sets[i] = [word[i]].iter().cloned().collect();
+            for j in 0..26 {
+                new_l[j][i] = false;
+            }
+            new_l[word[i] as usize][i] = true;
         } else if !word.contains(&guess[i]) {
-            for new_set in new_letter_sets.iter_mut() {
-                new_set.remove(&guess[i]);
+            for j in 0..5 {
+                new_l[guess[i] as usize][j] = false;
             }
         } else {
-            new_letter_sets[i].remove(&guess[i]);
+            new_l[guess[i] as usize][i] = false;
         }
     }
 
-    new_letter_sets
+    new_l
 }
 
-fn reduce(words: &[Word], letter_sets: &[HashSet<u8>]) -> Vec<Word> {
-    words
-        .iter()
-        .filter(|&word| {
-            word.iter().enumerate().all(|(i, &c)| letter_sets[i].contains(&c))
+fn reduce(w: &Vec<[u8; 5]>, l: &[[bool; 5]; 26]) -> Vec<[u8; 5]> {
+    w.iter()
+        .filter(|&&word| {
+            word.iter()
+                .enumerate()
+                .all(|(i, &letter)| l[letter as usize][i])
         })
         .cloned()
         .collect()
 }
 
-fn reduce_count(words: &[Word], letter_sets: &[HashSet<u8>]) -> usize {
-    words
-        .iter()
-        .filter(|&word| {
-            word.iter().enumerate().all(|(i, &c)| letter_sets[i].contains(&c))
-        })
-        .count()
+fn expected_reduction(guess: &Word, w: &Vec<Word>, l: &[[bool; 5]; 26]) -> f64 {
+    let g = reduce(w, l);
+    let e: f64 = g.iter()
+        .map(|&word| reduce(&g, &evolve(l, &word, guess)).len() as f64)  
+        .sum::<f64>() / g.len() as f64;
+
+    (g.len() as f64) - e
 }
 
-fn expected_reduction(guess: &Word, words: &[Word], letter_sets: &[HashSet<u8>]) -> f64 {
-    let g = reduce(words, letter_sets);
-    let n = g.len() as f64;
-    let e: f64 = g.iter()
-        .map(|word| reduce_count(&g, &evolve(letter_sets.to_vec(), &word, guess)) as f64)
-        .sum::<f64>()
-        / g.len() as f64;
-    n - e
+fn optimal_guess(w: &Vec<[u8; 5]>, l: &[[bool; 5]; 26]) -> [u8; 5] {
+    let reductions: Vec<f64> = tqdm(w.iter())
+        .map(|&guess| expected_reduction(&guess, w, l))
+        .collect();
+
+    let max_index = reductions.iter()
+        .enumerate()
+        .max_by(
+            |a, b| a.1.partial_cmp(b.1).unwrap_or(
+                std::cmp::Ordering::Equal
+            )
+        )
+        .map(|(index, _)| index)
+        .unwrap();
+
+    w[max_index]
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+
     if args.len() < 2 {
-        panic!("Expected a word as the first argument");
-    }
-
-    let word_str = &args[1];
-    let word = string_to_word(word_str);
-    let words = get_words();
-    let mut letter_sets: Vec<HashSet<u8>> = (0..MAX_TRIES)
-        .map(|i| words.iter().map(|w| w[i]).collect())
-        .collect();
-
-    if args.len() > 2 {
-        for guess_str in args[2..].iter() {
-            let guess = string_to_word(guess_str);
-            letter_sets = evolve(letter_sets, &word, &guess);
-            let g = reduce(&words, &letter_sets);
-            println!("Guess: {} ({} words remaining)", guess_str, g.len());
-        }
-    }
-
-    let g = reduce(&words, &letter_sets);
-    if g.len() == 1 {
-        println!("Solution: {}", word_str);
+        println!("Usage: program_name word [guesses...]");
         return;
     }
 
-    for _ in 0..MAX_TRIES {
-        let pb = ProgressBar::new(words.len() as u64);
-        pb.set_style(ProgressStyle::default_bar());
-        let reductions: Vec<f64> = words.par_iter()
-            .map(|guess| {
-                pb.inc(1);
-                expected_reduction(guess, &words, &letter_sets)
-            })
-            .collect();
-        pb.finish_and_clear();
+    let word_str = &args[1];
+    let word = string_to_u8(word_str);
+    let w_str = get_words();
+    let w: Vec<Word> = w_str.iter().map(|s| string_to_u8(s)).collect();
 
-        let max_reduction = reductions.iter().cloned().fold(0. / 0., f64::max); // NaN as initial value to handle empty vec
-        let best_guess_index = reductions.iter().position(|&r| r == max_reduction).unwrap();
-        let best_guess = words[best_guess_index];
-        let best_guess_str: String = best_guess.iter().map(|&c| u8_to_char(c)).collect();
+    if !w_str.contains(word_str) {
+        println!("Word {} not in dictionary.", word_str);
+        return;
+    }
 
-        letter_sets = evolve(letter_sets, &word, &best_guess);
-        let g = reduce(&words, &letter_sets);
+    let mut l = [[true; 5]; 26];
 
-        println!("Guess: {} ({} words remaining) - auto", best_guess_str, g.len());
+    let mut g = w.clone();
+
+    if args.len() > 2 {
+        for (i, guess_str) in args[2..].iter().enumerate() {
+            if guess_str.len() != 5 {
+                println!("All guesses must be 5 letters long.");
+                return;
+            }
+
+            let len_g = g.len();
+            let guess = string_to_u8(guess_str);
+            l = evolve(&l, &word, &guess);
+            g = reduce(&w, &l);
+
+            println!(
+                "Guess {}/{}: {} ({} words remaining) reduction: {}",
+                i + 1,
+                MAX_TRIES,
+                guess_str,
+                g.len(),
+                len_g - g.len()
+            );
+        }
+    }
+
+    if g.len() == 1 {
+        println!("Solution: {}", u8_to_string(&g[0]));
+        return;
+    }
+
+    for i in (args.len() - 2)..(MAX_TRIES - 1) {
+        let len_g = g.len();
+        let best_guess = optimal_guess(&w, &l);
+        let expected = expected_reduction(&best_guess, &w, &l);
+
+        l = evolve(&l, &word, &best_guess);
+        g = reduce(&w, &l);
+        let actual = len_g - g.len();
+
+        println!(
+            "Guess {}/{}: {} ({} words remaining) reduction: {} (expected {:.2})",
+            i + 1,
+            MAX_TRIES,
+            u8_to_string(&best_guess),
+            g.len(),
+            actual,
+            expected
+        );
 
         if g.len() == 1 {
-            let solution = g[0];
-            let solution_str: String = solution.iter().map(|&c| u8_to_char(c)).collect();
-            println!("Solution: {}", solution_str);
+            println!("Solution {}/{}: {}", i + 2, MAX_TRIES, u8_to_string(&g[0]));
             break;
         }
+    }
+
+    if g.len() != 1 {
+        println!("Failed.");
     }
 }

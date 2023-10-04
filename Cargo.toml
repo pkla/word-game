@@ -6,5 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indicatif = "0.17.7"
-rayon = "1.5"
+tqdm = "0.5.2"
+
+[profile.release]
+opt-level = 3
