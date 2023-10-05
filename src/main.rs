@@ -1,12 +1,11 @@
+use indicatif::{ParallelProgressIterator, ProgressStyle};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::env;
 use std::fs;
-use indicatif::{ProgressBar, ParallelProgressIterator, ProgressStyle};
-use rayon::iter::{ParallelIterator, IntoParallelRefIterator};
 
 const MAX_TRIES: usize = 6;
 
 type Word = [u8; 5];
-
 
 fn string_to_u8(word: &str) -> Word {
     let mut arr = [0u8; 5];
@@ -20,7 +19,6 @@ fn u8_to_string(word: &Word) -> String {
     word.iter().map(|&b| (b + ('a' as u8)) as char).collect()
 }
 
-
 fn get_words() -> Vec<String> {
     let filename = "wordle_words.txt";
     let text = fs::read_to_string(filename).expect("Unable to read the file");
@@ -28,7 +26,6 @@ fn get_words() -> Vec<String> {
     words.sort();
     words
 }
-
 
 fn evolve(l: &[[bool; 5]; 26], word: &Word, guess: &Word) -> [[bool; 5]; 26] {
     let mut new_l = *l;
@@ -64,34 +61,32 @@ fn reduce(w: &Vec<[u8; 5]>, l: &[[bool; 5]; 26]) -> Vec<[u8; 5]> {
 
 fn expected_reduction(guess: &Word, w: &Vec<Word>, l: &[[bool; 5]; 26]) -> f64 {
     let g = reduce(w, l);
-    let e: f64 = g.iter()
-        .map(|&word| reduce(&g, &evolve(l, &word, guess)).len() as f64)  
-        .sum::<f64>() / g.len() as f64;
+    let e: f64 = g
+        .iter()
+        .map(|&word| reduce(&g, &evolve(l, &word, guess)).len() as f64)
+        .sum::<f64>()
+        / g.len() as f64;
 
     (g.len() as f64) - e
 }
 
-
 fn optimal_guess(w: &Vec<Word>, l: &[[bool; 5]; 26]) -> Word {
     let style = ProgressStyle::default_bar();
-    let reductions: Vec<f64> = w.par_iter()
+    let reductions: Vec<f64> = w
+        .par_iter()
         .progress_with_style(style)
         .map(|&guess| expected_reduction(&guess, w, l))
         .collect();
 
-    let max_index = reductions.iter()
+    let max_index = reductions
+        .iter()
         .enumerate()
-        .max_by(
-            |a, b| a.1.partial_cmp(b.1).unwrap_or(
-                std::cmp::Ordering::Equal
-            )
-        )
+        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
         .map(|(index, _)| index)
         .unwrap();
 
     w[max_index]
 }
-
 
 fn main() {
     let args: Vec<String> = env::args().collect();
