@@ -19,12 +19,10 @@ fn u8_to_string(word: &Word) -> String {
     word.iter().map(|&b| (b + ('a' as u8)) as char).collect()
 }
 
-fn get_words() -> Vec<String> {
+fn get_words() -> Vec<Word> {
     let filename = "wordle_words.txt";
     let text = fs::read_to_string(filename).expect("Unable to read the file");
-    let mut words: Vec<String> = text.lines().map(|s| s.trim().to_lowercase()).collect();
-    words.sort();
-    words
+    text.lines().map(|s| string_to_u8(&s.trim().to_lowercase())).collect()
 }
 
 fn evolve(l: &[[bool; 5]; 26], word: &Word, guess: &Word) -> [[bool; 5]; 26] {
@@ -107,10 +105,9 @@ fn main() {
 
     let word_str = &args[1];
     let word = string_to_u8(word_str);
-    let w_str = get_words();
-    let w: Vec<Word> = w_str.iter().map(|s| string_to_u8(s)).collect();
+    let w = get_words();
 
-    if !w_str.contains(word_str) {
+    if !w.contains(&word) {
         println!("Word {} not in dictionary.", word_str);
         return;
     }
@@ -120,24 +117,34 @@ fn main() {
     let mut g = w.clone();
 
     if args.len() > 2 {
-        for (i, guess_str) in args[2..].iter().enumerate() {
-            if guess_str.len() != 5 {
-                println!("All guesses must be 5 letters long.");
+        // check all guesses are in wordlist, else return
+        for guess_str in args[2..].iter() {
+            let guess = string_to_u8(guess_str);
+            if guess.len() != 5 {
+                println!("Guess {} is not 5 letters.", guess_str);
+                return;
+            } else if !w.contains(&guess) {
+                println!("Guess {} not in dictionary.", guess_str);
                 return;
             }
-
+        }
+        
+        for (i, guess_str) in args[2..].iter().enumerate() {
             let len_g = g.len();
             let guess = string_to_u8(guess_str);
+            let expected = expected_reduction(&guess, &w, &l);
+
             l = evolve(&l, &word, &guess);
             g = reduce(&w, &l);
 
             println!(
-                "Guess {}/{}: {} ({} words remaining) reduction: {}",
+                "Guess {}/{}: {} ({} words remaining) reduction: {} (expected {:.2})",
                 i + 1,
                 MAX_TRIES,
                 guess_str,
                 g.len(),
-                len_g - g.len()
+                len_g - g.len(),
+                expected
             );
         }
     }
