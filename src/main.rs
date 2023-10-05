@@ -1,6 +1,7 @@
-use tqdm::tqdm;
 use std::env;
 use std::fs;
+use indicatif::{ProgressBar, ParallelProgressIterator, ProgressStyle};
+use rayon::iter::{ParallelIterator, IntoParallelRefIterator};
 
 const MAX_TRIES: usize = 6;
 
@@ -70,8 +71,11 @@ fn expected_reduction(guess: &Word, w: &Vec<Word>, l: &[[bool; 5]; 26]) -> f64 {
     (g.len() as f64) - e
 }
 
-fn optimal_guess(w: &Vec<[u8; 5]>, l: &[[bool; 5]; 26]) -> [u8; 5] {
-    let reductions: Vec<f64> = tqdm(w.iter())
+
+fn optimal_guess(w: &Vec<Word>, l: &[[bool; 5]; 26]) -> Word {
+    let style = ProgressStyle::default_bar();
+    let reductions: Vec<f64> = w.par_iter()
+        .progress_with_style(style)
         .map(|&guess| expected_reduction(&guess, w, l))
         .collect();
 
@@ -87,6 +91,7 @@ fn optimal_guess(w: &Vec<[u8; 5]>, l: &[[bool; 5]; 26]) -> [u8; 5] {
 
     w[max_index]
 }
+
 
 fn main() {
     let args: Vec<String> = env::args().collect();
