@@ -48,7 +48,7 @@ fn evolve(l: &[[bool; 5]; 26], word: &Word, guess: &Word) -> [[bool; 5]; 26] {
     new_l
 }
 
-fn reduce(w: &Vec<[u8; 5]>, l: &[[bool; 5]; 26]) -> Vec<[u8; 5]> {
+fn reduce(w: &Vec<Word>, l: &[[bool; 5]; 26]) -> Vec<Word> {
     w.iter()
         .filter(|&&word| {
             word.iter()
@@ -59,15 +59,24 @@ fn reduce(w: &Vec<[u8; 5]>, l: &[[bool; 5]; 26]) -> Vec<[u8; 5]> {
         .collect()
 }
 
+fn reduce_len(w: &Vec<Word>, l: &[[bool; 5]; 26]) -> usize {
+    w.iter()
+        .filter(|&&word| {
+            word.iter()
+                .enumerate()
+                .all(|(i, &letter)| l[letter as usize][i])
+        })
+        .count()
+}
+
 fn expected_reduction(guess: &Word, w: &Vec<Word>, l: &[[bool; 5]; 26]) -> f64 {
     let g = reduce(w, l);
-    let e: f64 = g
-        .iter()
-        .map(|&word| reduce(&g, &evolve(l, &word, guess)).len() as f64)
+    let e: f64 = g.iter()
+        .map(|&word| reduce_len(&g, &evolve(l, &word, guess)) as f64)
         .sum::<f64>()
         / g.len() as f64;
 
-    (g.len() as f64) - e
+    g.len() as f64 - e
 }
 
 fn optimal_guess(w: &Vec<Word>, l: &[[bool; 5]; 26]) -> Word {
@@ -138,7 +147,7 @@ fn main() {
         return;
     }
 
-    for i in (args.len() - 2)..(MAX_TRIES - 1) {
+    for i in (args.len() - 2)..(MAX_TRIES) {
         let len_g = g.len();
         let best_guess = optimal_guess(&w, &l);
         let expected = expected_reduction(&best_guess, &w, &l);
@@ -157,13 +166,13 @@ fn main() {
             expected
         );
 
-        if g.len() == 1 {
+        if (g.len() == 1) && (i < MAX_TRIES - 1) {
             println!("Solution {}/{}: {}", i + 2, MAX_TRIES, u8_to_string(&g[0]));
             break;
         }
     }
 
-    if g.len() != 1 {
+    if g.len() > 1 {
         println!("Failed.");
     }
 }
